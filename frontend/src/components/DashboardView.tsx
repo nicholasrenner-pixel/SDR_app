@@ -8,9 +8,10 @@ import {
   Flame, 
   Send, 
   CheckCircle2, 
-  Target, 
+  CalendarClock, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
 import type { DashboardAnalytics, Account } from '../types';
 
@@ -19,12 +20,14 @@ interface DashboardViewProps {
   accounts: Account[];
   onSelectAccount: (id: number) => void;
   onNavigate: (view: 'accounts' | 'add-account') => void;
+  onFilterDueToday: () => void;
 }
 
 const TEMP_COLORS: Record<string, string> = {
-  HOT: '#e11d48',
-  WARM: '#d97706',
-  COLD: '#64748b',
+  HOT: '#e11d48',          // Rose 600
+  WARM: '#d97706',         // Amber 600
+  COLD: '#64748b',         // Slate 500
+  DISQUALIFIED: '#475569', // Dark Slate
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -32,11 +35,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   accounts,
   onSelectAccount,
   onNavigate,
+  onFilterDueToday,
 }) => {
   if (!analytics) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-slate-500 text-sm font-medium">Loading dashboard analytics...</div>
+        <div className="text-slate-500 text-sm font-medium">Loading Deel pipeline analytics...</div>
       </div>
     );
   }
@@ -53,6 +57,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     { name: 'HOT (75+)', value: analytics.temperature_counts['HOT'] || 0, color: TEMP_COLORS.HOT },
     { name: 'WARM (45-74)', value: analytics.temperature_counts['WARM'] || 0, color: TEMP_COLORS.WARM },
     { name: 'COLD (<45)', value: analytics.temperature_counts['COLD'] || 0, color: TEMP_COLORS.COLD },
+    { name: 'DISQUALIFIED', value: analytics.temperature_counts['DISQUALIFIED'] || 0, color: TEMP_COLORS.DISQUALIFIED },
   ].filter(d => d.value > 0);
 
   const total = analytics.funnel_counts['Total Accounts'] || 0;
@@ -73,17 +78,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Top Welcome & KPI Metrics */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Deel Executive Dashboard</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Real-time pipeline analytics, ICP scoring velocity, and conversion funnel metrics.
+            Global workforce pipeline analytics, Deel ICP scoring velocity, and conversion funnel metrics.
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={() => onNavigate('add-account')}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors"
           >
             <Sparkles className="w-4 h-4" />
             <span>Add Target Account</span>
@@ -91,20 +97,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Top KPI Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Accounts */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Accounts</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Pipeline</span>
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{analytics.total_accounts}</span>
-            <span className="text-xs font-medium text-slate-500">In CRM</span>
+            <span className="text-3xl font-black tabular-nums text-slate-900">{analytics.total_accounts}</span>
+            <span className="text-xs font-medium text-slate-500">Target Accounts</span>
           </div>
         </div>
 
+        {/* Hot Accounts (75+) */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-rose-600">Hot Priority</span>
@@ -113,57 +122,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{analytics.hot_count}</span>
-            <span className="text-xs font-medium text-rose-600">Score 75+</span>
+            <span className="text-3xl font-black tabular-nums text-slate-900">{analytics.hot_count}</span>
+            <span className="text-xs font-semibold text-rose-600">Score 75+ (High Fit)</span>
           </div>
         </div>
 
+        {/* Meetings Booked */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Ready Outreach</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <Send className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{analytics.status_counts['Ready'] || 0}</span>
-            <span className="text-xs font-medium text-indigo-600">Brief Generated</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Meetings</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Meetings Booked</span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{analytics.status_counts['Meeting'] || 0}</span>
-            <span className="text-xs font-medium text-emerald-600">Target Met</span>
+            <span className="text-3xl font-black tabular-nums text-slate-900">{analytics.meetings_count}</span>
+            <span className="text-xs font-semibold text-emerald-600">AE Discovery Set</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        {/* Follow-Ups Due Today */}
+        <div 
+          onClick={onFilterDueToday}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs cursor-pointer hover:border-blue-300 transition-colors"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Avg Lead Score</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">Follow-Ups Due</span>
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-              <Target className="w-4 h-4" />
+              <CalendarClock className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{analytics.average_score}</span>
-            <span className="text-xs font-medium text-slate-500">Out of 100</span>
+            <span className="text-3xl font-black tabular-nums text-slate-900">{analytics.due_today_count}</span>
+            <span className="text-xs font-semibold text-blue-600 underline">Due Today / Past Due</span>
           </div>
         </div>
       </div>
 
+      {/* Analytics Charts Grid: (a) Accounts by Status, (b) Accounts by Temperature, (c) Pipeline Funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chart A: Accounts by Status */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-900">Accounts by Status</h3>
-              <span className="text-xs text-slate-400 font-medium">Pipeline Velocity</span>
+              <span className="text-xs text-slate-400 font-medium">SDR Pipeline Stage</span>
             </div>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -185,11 +188,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
+        {/* Chart B: Accounts by Temperature */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-slate-900">Accounts by Temperature</h3>
-              <span className="text-xs text-slate-400 font-medium">ICP Fit Priority</span>
+              <h3 className="text-sm font-bold text-slate-900">Deel ICP Fit Temperature</h3>
+              <span className="text-xs text-slate-400 font-medium">Scoring Tier</span>
             </div>
             <div className="h-56 flex items-center justify-center">
               {temperatureData.length > 0 ? (
@@ -201,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
+                      innerRadius={48}
                       outerRadius={75}
                       paddingAngle={3}
                     >
@@ -219,22 +223,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
           </div>
-          <div className="flex justify-center space-x-4 pt-2 border-t border-slate-100 text-xs">
-            <div className="flex items-center space-x-1.5">
+          <div className="flex justify-center flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-slate-100 text-xs">
+            <div className="flex items-center space-x-1">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
               <span className="text-slate-600 font-medium">HOT ({analytics.hot_count})</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
               <span className="text-slate-600 font-medium">WARM ({analytics.warm_count})</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
               <span className="text-slate-600 font-medium">COLD ({analytics.cold_count})</span>
             </div>
+            {analytics.disqualified_count > 0 && (
+              <div className="flex items-center space-x-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                <span className="text-slate-600 font-medium">DISQ ({analytics.disqualified_count})</span>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Chart C: Pipeline Funnel Conversion */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -246,7 +257,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-700">{step.stage}</span>
-                    <span className="text-slate-900">{step.count} ({step.rate})</span>
+                    <span className="text-slate-900 tabular-nums">{step.count} ({step.rate})</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div 
@@ -265,18 +276,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Overall Funnel Yield</span>
-            <span className="font-bold text-slate-900">
+            <span className="font-bold text-slate-900 tabular-nums">
               {total > 0 ? `${Math.round((meeting / total) * 100)}%` : '0%'} to Meeting
             </span>
           </div>
         </div>
       </div>
 
+      {/* Hot Accounts Action Panel */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Priority Outbound Targets</h3>
-            <p className="text-xs text-slate-500">Highest scoring prospects ready for active outreach briefs.</p>
+            <h3 className="text-sm font-bold text-slate-900">Priority Outbound Targets (Deel ICP 75+)</h3>
+            <p className="text-xs text-slate-500">High-intent accounts with active international hiring or contractor misclassification risks.</p>
           </div>
           <button
             onClick={() => onNavigate('accounts')}
@@ -293,42 +305,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {hotAccounts.map((account) => (
-              <div
-                key={account.id}
-                onClick={() => onSelectAccount(account.id)}
-                className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 font-bold text-xs">
-                    {account.lead_score}
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-semibold text-slate-900">{account.company_name}</span>
-                      {account.is_sample && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">
-                          SAMPLE
-                        </span>
-                      )}
+            {hotAccounts.map((account) => {
+              const primaryContact = account.contacts && account.contacts[0];
+              return (
+                <div
+                  key={account.id}
+                  onClick={() => onSelectAccount(account.id)}
+                  className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 font-bold text-xs tabular-nums">
+                      {account.lead_score}
                     </div>
-                    <p className="text-xs text-slate-500">
-                      {account.prospect_name || 'No contact'} • {account.prospect_title || account.industry || 'B2B'}
-                    </p>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-semibold text-slate-900">{account.company_name}</span>
+                        {account.is_sample === 1 && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            SAMPLE
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-200">
+                          {account.recommended_product}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {primaryContact ? `${primaryContact.full_name} (${primaryContact.title})` : 'No contact assigned'} • {account.industry || 'B2B'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                      HOT
+                    </span>
+                    <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
+                      {account.status}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-slate-400" />
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-4">
-                  <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-rose-50 text-rose-700 border border-rose-200">
-                    HOT
-                  </span>
-                  <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
-                    {account.status}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-slate-400" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
